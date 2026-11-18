@@ -69,25 +69,51 @@ async function chamarFluxo(payload, url) {
 
 //  NORMALIZAÇÃO DOS DADOS (Arrumando a bagunça do Excel/API)
 
-function normalizar(item) {
-  const sit = String(texto(pegar(item, ['Situacao', 'situacao', 'Status', 'status']))).trim().toLowerCase();
-  
-  // Define o grupo (Usado para pintar os gráficos)
-  let grupo = 'pend'; // Pendente
-  if (sit === 'finalizado' || sit === 'concluído' || sit === 'concluido') grupo = 'fim'; // Concluído
-  else if (sit === 'em andamento') grupo = 'and'; // Em andamento
+// Função blindada para extrair o mês (YYYY-MM) de qualquer formato de data
+function extrairMes(valor) {
+  if (!valor) return '';
+  const str = String(valor).trim();
 
-  // Busca a data de criação para o gráfico de meses
-  const criado = String(pegar(item, ['criadoEm', 'CriadoEm', 'Created', 'Criado', 'DataCriacao', 'DataAbertura']));
-  let mes = '';
-  if (criado && criado !== 'Invalid Date') {
-    const d = new Date(criado);
-    if (!isNaN(d.getTime())) {
-      mes = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); // Guarda no formato YYYY-MM
+  // 1. Formato ISO: YYYY-MM-DD (ex: 2026-11-18)
+  const iso = str.match(/^(\d{4})-(\d{2})-\d{2}/);
+  if (iso) return `${iso[1]}-${iso[2]}`;
+
+  // 2. Formato Brasileiro: DD/MM/YYYY (ex: 18/11/2026)
+  const br = str.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if (br) return `${br[3]}-${br[2]}`;
+
+  // 3. Serial numérico do Excel (ex: 46344)
+  if (/^\d{5}(\.\d+)?$/.test(str)) {
+    const dExcel = new Date(Math.round((Number(str) - 25569) * 86400 * 1000));
+    if (!isNaN(dExcel.getTime())) {
+      return dExcel.getUTCFullYear() + '-' + String(dExcel.getUTCMonth() + 1).padStart(2, '0');
     }
   }
 
-  // Retorna um objeto limpo e padronizado para usarmos nos gráficos
+  // 4. Fallback padrão do JavaScript
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+
+  return '';
+}
+
+function normalizar(item) {
+  const sit = String(texto(pegar(item, ['Situacao', 'situacao', 'Status', 'status']))).trim().toLowerCase();
+  
+  let grupo = 'pend'; 
+  if (sit === 'finalizado' || sit === 'concluído' || sit === 'concluido') grupo = 'fim';
+  else if (sit === 'em andamento') grupo = 'and';
+
+  // Adicionamos 'Data' e 'data' na lista para garantir que ache o campo de data
+  const criado = texto(pegar(item, [
+    'criadoEm', 'CriadoEm', 'Created', 'Criado', 
+    'DataCriacao', 'DataAbertura', 'Data', 'data'
+  ]));
+  
+  const mes = extrairMes(criado);
+
   return {
     id: String(pegar(item, ['idFormulario', 'IDFormulario']) || pegar(item, ['ID', 'id']) || ''),
     problema: texto(pegar(item, ['Problema', 'problema'])),
