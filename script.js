@@ -474,10 +474,13 @@ function desenharLista() {
 //ABRIR E PREENCHER FORMULÁRIO
 
 // Abre um item específico no formulário, aplica bloqueios e ajusta botões
+// ABRIR E PREENCHER FORMULÁRIO
+
+// Abre um item específico no formulário, aplica bloqueios e ajusta botões
 function abrirFormulario(item) {
    isTelaCriacao = false;
   
-  // Helper local: busca valor por nome de chave (mesmo padrão dos outros)
+  // Helper local: busca valor por nome de chave
   const pegarValor = (nomes) => {
     for (let n of nomes) if (item[n] !== undefined && item[n] !== null && String(item[n]).trim() !== '') return item[n];
     for (let c of Object.keys(item)) if (nomes.some(n => c.toLowerCase().includes(n.toLowerCase()))) return item[c];
@@ -485,11 +488,14 @@ function abrirFormulario(item) {
   };
 
   form.reset();
+  
+  // CORREÇÃO AQUI: Pega primeiro o ID de controle amigável (idFormulario), 
+  // caso contrário recorre ao ID técnico da linha
+  idFormulario = lerIdFormulario(item) || pegarValor(['idFormulario', 'IDFormulario']) || String(pegarValor(['ID', 'id', 'Id']) || '');
   idEmEdicao = pegarValor(['ID', 'id', 'Id']);
-  idFormulario = lerIdFormulario(item) || (idEmEdicao ? String(idEmEdicao) : gerarIdFormulario());
+  
   mostrarId();
   atualizarContadores();
-
   // Carrega dados de texto
   form.elements['regional'].value = pegarValor(['Regional', 'regional']);
   form.elements['area'].value = pegarValor(['Area', 'area', 'Área']);
